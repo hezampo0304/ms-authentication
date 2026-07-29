@@ -1,0 +1,255 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/////////////////////////////////////////////////////
+// ENUMS
+/////////////////////////////////////////////////////
+
+enum TenantType {
+  TRAVEL_AGENCY
+  BUS_OPERATOR
+  HOTEL
+  AIRLINE
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum SessionStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum OAuthProvider {
+  GOOGLE
+  MICROSOFT
+  GITHUB
+}
+
+/////////////////////////////////////////////////////
+// TENANT
+/////////////////////////////////////////////////////
+
+model Tenant {
+  id          String        @id @default(uuid())
+  name        String
+  slug        String        @unique
+  type        TenantType
+  status      TenantStatus  @default(ACTIVE)
+  email       String?
+  phone       String?
+  logoUrl     String?
+  users        User[]
+  roles        Role[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  @@map("tenants")
+}
+
+/////////////////////////////////////////////////////
+// USER
+/////////////////////////////////////////////////////
+
+model User {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  firstName       String
+  lastName        String
+  email           String
+  passwordHash    String
+  enabled         Boolean  @default(true)
+  emailVerified   Boolean  @default(false)
+  lastLogin       DateTime?
+  sessions        Session[]
+  roles           UserRole[]
+  oauthAccounts   OAuthAccount[]
+  auditLogs       AuditLog[]
+  passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+/////////////////////////////////////////////////////
+// ROLE
+/////////////////////////////////////////////////////
+
+model Role {
+  id            String   @id @default(uuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  name          String
+  description   String?
+  users         UserRole[]
+  permissions   RolePermission[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@unique([tenantId, name])
+  @@map("roles")
+}
+
+/////////////////////////////////////////////////////
+// PERMISSION
+/////////////////////////////////////////////////////
+
+model Permission {
+  id            String @id @default(uuid())
+  resource      String
+  action        String
+  description   String?
+  roles         RolePermission[]
+  @@unique([resource, action])
+  @@map("permissions")
+}
+
+/////////////////////////////////////////////////////
+// USER ROLE
+/////////////////////////////////////////////////////
+
+model UserRole {
+  userId      String
+  roleId      String
+  assignedBy  String?
+  assignedAt  DateTime @default(now())
+  user        User @relation(fields: [userId], references: [id])
+  role        Role @relation(fields: [roleId], references: [id])
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+/////////////////////////////////////////////////////
+// ROLE PERMISSION
+/////////////////////////////////////////////////////
+
+model RolePermission {
+  roleId        String
+  permissionId  String
+  createdAt     DateTime @default(now())
+  role          Role @relation(fields: [roleId], references: [id])
+  permission    Permission @relation(fields: [permissionId], references: [id])
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+/////////////////////////////////////////////////////
+// SESSION
+/////////////////////////////////////////////////////
+
+model Session {
+  id              String @id @default(uuid())
+  userId          String
+  user            User @relation(fields: [userId], references: [id])
+  status          SessionStatus @default(ACTIVE)
+  deviceName      String?
+  deviceType      String?
+  operatingSystem String?
+  browser         String?
+  ipAddress       String?
+  country         String?
+  city            String?
+  lastActivity    DateTime
+  expiresAt       DateTime
+  refreshTokens   RefreshToken[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@index([userId])
+  @@map("sessions")
+}
+
+/////////////////////////////////////////////////////
+// REFRESH TOKEN
+/////////////////////////////////////////////////////
+
+model RefreshToken {
+  id          String @id @default(uuid())
+  sessionId   String
+  session     Session @relation(fields: [sessionId], references: [id])
+  tokenHash   String
+  revoked     Boolean @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  @@index([sessionId])
+  @@map("refresh_tokens")
+}
+
+/////////////////////////////////////////////////////
+// PASSWORD RESET TOKEN
+/////////////////////////////////////////////////////
+
+model PasswordResetToken {
+  id          String @id @default(uuid())
+  userId      String
+  user        User @relation(fields: [userId], references: [id])
+  tokenHash   String
+  used        Boolean @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  @@map("password_reset_tokens")
+}
+
+/////////////////////////////////////////////////////
+// EMAIL VERIFICATION TOKEN
+/////////////////////////////////////////////////////
+
+model EmailVerificationToken {
+  id          String @id @default(uuid())
+  userId      String
+  user        User @relation(fields: [userId], references: [id])
+  tokenHash   String
+  used        Boolean @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  @@map("email_verification_tokens")
+}
+
+/////////////////////////////////////////////////////
+// OAUTH ACCOUNT
+/////////////////////////////////////////////////////
+
+model OAuthAccount {
+  id                String @id @default(uuid())
+  userId            String
+  user              User @relation(fields: [userId], references: [id])
+  provider          OAuthProvider
+  providerUserId    String
+  providerEmail     String?
+  createdAt         DateTime @default(now())
+  @@unique([provider, providerUserId])
+  @@map("oauth_accounts")
+}
+
+/////////////////////////////////////////////////////
+// AUDIT LOG
+/////////////////////////////////////////////////////
+
+model AuditLog {
+  id            String @id @default(uuid())
+  userId        String
+  user          User @relation(fields: [userId], references: [id])
+  action        String
+  resource      String
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+  @@index([userId])
+  @@map("audit_logs")
+}
