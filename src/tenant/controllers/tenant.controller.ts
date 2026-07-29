@@ -8,6 +8,7 @@ import {
 
 import { CreateTenantDto } from '../dto/create-tenant.dto';
 import { TenantService } from '../services/tenant.service';
+import { ResponseFactory } from 'src/common/response/response.factory';
 
 @Controller('/tenants')
 export class TenantController {
@@ -25,10 +26,9 @@ export class TenantController {
     const tenant =
       await this.tenantService.registerTenant(dto);
 
-    return {
-      success: true,
-      message: 'Tenant registered successfully.',
-      data: tenant,
-    };
+    return ResponseFactory.success(
+      tenant,
+      'Tenant registered successfully.',
+    );
   }
 }

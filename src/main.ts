@@ -5,10 +5,15 @@ import helmet from 'helmet';
 import compression from 'compression';
 
 import { AppModule } from './app.module';
+import { GlobalExceptionFilter } from './common/exceptions/global-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+
+  app.useGlobalFilters(
+    new GlobalExceptionFilter(),
+  );
 
   app.use(helmet());
   app.use(compression());
@@ -16,12 +21,12 @@ async function bootstrap() {
   app.setGlobalPrefix(configService.get<string>('API_PREFIX')!);
 
   app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidNonWhitelisted: true,
-    }),
-  );
+  new ValidationPipe({
+    whitelist: true,
+    transform: true,
+    forbidNonWhitelisted: true,
+  }),
+);
 
   const port = configService.get<number>('PORT') ?? 3000;
 

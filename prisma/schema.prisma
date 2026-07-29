@@ -18,27 +18,40 @@ datasource db {
 
 enum TenantType {
   TRAVEL_AGENCY
-  BUS_OPERATOR
   HOTEL
   AIRLINE
+  TRANSPORT_COMPANY
+  TOUR_OPERATOR
+  CORPORATE
 }
 
 enum TenantStatus {
   ACTIVE
-  SUSPENDED
   INACTIVE
+  SUSPENDED
+  PENDING_APPROVAL
 }
 
-enum SessionStatus {
+enum UserStatus {
+  INVITED
   ACTIVE
-  REVOKED
-  EXPIRED
+  LOCKED
+  DISABLED
 }
 
-enum OAuthProvider {
+enum IdentityProvider {
+  LOCAL
   GOOGLE
   MICROSOFT
+  APPLE
   GITHUB
+}
+
+enum CredentialType {
+  PASSWORD
+  PASSKEY
+  TOTP
+  RECOVERY_CODE
 }
 
 /////////////////////////////////////////////////////
@@ -46,18 +59,20 @@ enum OAuthProvider {
 /////////////////////////////////////////////////////
 
 model Tenant {
-  id          String        @id @default(uuid())
-  name        String
-  slug        String        @unique
-  type        TenantType
-  status      TenantStatus  @default(ACTIVE)
-  email       String?
-  phone       String?
-  logoUrl     String?
-  users        User[]
-  roles        Role[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id        String       @id @default(uuid())
+  name      String
+  slug      String       @unique
+  email     String?
+  phone     String?
+  logoUrl   String?
+  type      TenantType
+  status    TenantStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  deletedAt DateTime?
+  users     User[]
+
+  @@index([status])
   @@map("tenants")
 }
 
@@ -66,113 +81,64 @@ model Tenant {
 /////////////////////////////////////////////////////
 
 model User {
-  id              String   @id @default(uuid())
-  tenantId        String
-  tenant          Tenant   @relation(fields: [tenantId], references: [id])
-  firstName       String
-  lastName        String
-  email           String
-  passwordHash    String
-  enabled         Boolean  @default(true)
-  emailVerified   Boolean  @default(false)
-  lastLogin       DateTime?
-  sessions        Session[]
-  roles           UserRole[]
-  oauthAccounts   OAuthAccount[]
-  auditLogs       AuditLog[]
-  passwordResetTokens PasswordResetToken[]
-  emailVerificationTokens EmailVerificationToken[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id          String     @id @default(uuid())
+  tenantId    String
+  tenant      Tenant     @relation(fields: [tenantId], references: [id])
+  firstName   String
+  lastName    String
+  displayName String?
+  email       String
+  phone       String?
+  status      UserStatus @default(INVITED)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+  identities  Identity[]
+  auditLogs   AuditLog[]
+  sessions    Session[]
+
   @@unique([tenantId, email])
   @@index([tenantId])
+  @@index([status])
   @@map("users")
 }
 
 /////////////////////////////////////////////////////
-// ROLE
+// Identity
 /////////////////////////////////////////////////////
 
-model Role {
-  id            String   @id @default(uuid())
-  tenantId      String
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
-  name          String
-  description   String?
-  users         UserRole[]
-  permissions   RolePermission[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  @@unique([tenantId, name])
-  @@map("roles")
-}
+model Identity {
+  id                  String           @id @default(uuid())
+  userId              String
+  user                User             @relation(fields: [userId], references: [id])
+  provider            IdentityProvider
+  identifier          String
+  verified            Boolean          @default(false)
+  lastAuthenticatedAt DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  credentials         Credential[]
 
-/////////////////////////////////////////////////////
-// PERMISSION
-/////////////////////////////////////////////////////
-
-model Permission {
-  id            String @id @default(uuid())
-  resource      String
-  action        String
-  description   String?
-  roles         RolePermission[]
-  @@unique([resource, action])
-  @@map("permissions")
-}
-
-/////////////////////////////////////////////////////
-// USER ROLE
-/////////////////////////////////////////////////////
-
-model UserRole {
-  userId      String
-  roleId      String
-  assignedBy  String?
-  assignedAt  DateTime @default(now())
-  user        User @relation(fields: [userId], references: [id])
-  role        Role @relation(fields: [roleId], references: [id])
-  @@id([userId, roleId])
-  @@map("user_roles")
-}
-
-/////////////////////////////////////////////////////
-// ROLE PERMISSION
-/////////////////////////////////////////////////////
-
-model RolePermission {
-  roleId        String
-  permissionId  String
-  createdAt     DateTime @default(now())
-  role          Role @relation(fields: [roleId], references: [id])
-  permission    Permission @relation(fields: [permissionId], references: [id])
-  @@id([roleId, permissionId])
-  @@map("role_permissions")
-}
-
-/////////////////////////////////////////////////////
-// SESSION
-/////////////////////////////////////////////////////
-
-model Session {
-  id              String @id @default(uuid())
-  userId          String
-  user            User @relation(fields: [userId], references: [id])
-  status          SessionStatus @default(ACTIVE)
-  deviceName      String?
-  deviceType      String?
-  operatingSystem String?
-  browser         String?
-  ipAddress       String?
-  country         String?
-  city            String?
-  lastActivity    DateTime
-  expiresAt       DateTime
-  refreshTokens   RefreshToken[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  @@unique([provider, identifier])
   @@index([userId])
-  @@map("sessions")
+  @@map("identities")
+}
+
+/////////////////////////////////////////////////////
+// Credential
+/////////////////////////////////////////////////////
+
+model Credential {
+  id           String         @id @default(uuid())
+  identityId   String
+  identity     Identity       @relation(fields: [identityId], references: [id])
+  type         CredentialType
+  passwordHash String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([identityId])
+  @@map("credentials")
 }
 
 /////////////////////////////////////////////////////
@@ -180,61 +146,16 @@ model Session {
 /////////////////////////////////////////////////////
 
 model RefreshToken {
-  id          String @id @default(uuid())
-  sessionId   String
-  session     Session @relation(fields: [sessionId], references: [id])
-  tokenHash   String
-  revoked     Boolean @default(false)
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  tokenHash String
+  revoked   Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
   @@index([sessionId])
   @@map("refresh_tokens")
-}
-
-/////////////////////////////////////////////////////
-// PASSWORD RESET TOKEN
-/////////////////////////////////////////////////////
-
-model PasswordResetToken {
-  id          String @id @default(uuid())
-  userId      String
-  user        User @relation(fields: [userId], references: [id])
-  tokenHash   String
-  used        Boolean @default(false)
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
-  @@map("password_reset_tokens")
-}
-
-/////////////////////////////////////////////////////
-// EMAIL VERIFICATION TOKEN
-/////////////////////////////////////////////////////
-
-model EmailVerificationToken {
-  id          String @id @default(uuid())
-  userId      String
-  user        User @relation(fields: [userId], references: [id])
-  tokenHash   String
-  used        Boolean @default(false)
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
-  @@map("email_verification_tokens")
-}
-
-/////////////////////////////////////////////////////
-// OAUTH ACCOUNT
-/////////////////////////////////////////////////////
-
-model OAuthAccount {
-  id                String @id @default(uuid())
-  userId            String
-  user              User @relation(fields: [userId], references: [id])
-  provider          OAuthProvider
-  providerUserId    String
-  providerEmail     String?
-  createdAt         DateTime @default(now())
-  @@unique([provider, providerUserId])
-  @@map("oauth_accounts")
 }
 
 /////////////////////////////////////////////////////
@@ -242,14 +163,45 @@ model OAuthAccount {
 /////////////////////////////////////////////////////
 
 model AuditLog {
-  id            String @id @default(uuid())
-  userId        String
-  user          User @relation(fields: [userId], references: [id])
-  action        String
-  resource      String
-  ipAddress     String?
-  userAgent     String?
-  createdAt     DateTime @default(now())
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  action    String
+  resource  String
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
   @@index([userId])
   @@map("audit_logs")
+}
+
+/////////////////////////////////////////////////////
+// SESSION
+/////////////////////////////////////////////////////
+
+model Session {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  refreshTokens RefreshToken[]
+
+  ipAddress  String?
+  userAgent  String?
+  deviceName String?
+
+  isActive Boolean @default(true)
+
+  lastActivityAt DateTime?
+
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isActive])
+  @@map("sessions")
 }
