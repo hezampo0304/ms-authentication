@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,9 +7,123 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/////////////////////////////////////////////////////
-// ENUMS
-/////////////////////////////////////////////////////
+model Tenant {
+  id        String       @id @default(uuid())
+  name      String
+  slug      String       @unique
+  type      TenantType
+  status    TenantStatus @default(ACTIVE)
+  email     String?
+  phone     String?
+  logoUrl   String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  deletedAt DateTime?
+  users     User[]
+
+  @@index([status])
+  @@map("tenants")
+}
+
+model User {
+  id          String     @id @default(uuid())
+  tenantId    String
+  firstName   String
+  lastName    String
+  email       String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+  displayName String?
+  phone       String?
+  status      UserStatus @default(INVITED)
+  lastLoginAt DateTime?
+  auditLogs   AuditLog[]
+  identities  Identity[]
+  sessions    Session[]
+  tenant      Tenant     @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([status])
+  @@map("users")
+}
+
+model Identity {
+  id                  String           @id @default(uuid())
+  userId              String
+  provider            IdentityProvider
+  identifier          String
+  verified            Boolean          @default(false)
+  lastAuthenticatedAt DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  credentials         Credential[]
+  user                User             @relation(fields: [userId], references: [id])
+
+  @@unique([provider, identifier])
+  @@index([userId])
+  @@map("identities")
+}
+
+model Credential {
+  id           String         @id @default(uuid())
+  identityId   String
+  type         CredentialType
+  passwordHash String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  identity     Identity       @relation(fields: [identityId], references: [id])
+
+  @@index([identityId])
+  @@map("credentials")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  sessionId String
+  tokenHash String
+  revoked   Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("refresh_tokens")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  resource  String
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+model Session {
+  id             String         @id @default(uuid())
+  userId         String
+  deviceName     String?
+  ipAddress      String?
+  expiresAt      DateTime
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  isActive       Boolean        @default(true)
+  lastActivityAt DateTime?
+  userAgent      String?
+  refreshTokens  RefreshToken[]
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isActive])
+  @@map("sessions")
+}
 
 enum TenantType {
   TRAVEL_AGENCY
@@ -27,8 +136,8 @@ enum TenantType {
 
 enum TenantStatus {
   ACTIVE
-  INACTIVE
   SUSPENDED
+  INACTIVE
   PENDING_APPROVAL
 }
 
@@ -52,156 +161,4 @@ enum CredentialType {
   PASSKEY
   TOTP
   RECOVERY_CODE
-}
-
-/////////////////////////////////////////////////////
-// TENANT
-/////////////////////////////////////////////////////
-
-model Tenant {
-  id        String       @id @default(uuid())
-  name      String
-  slug      String       @unique
-  email     String?
-  phone     String?
-  logoUrl   String?
-  type      TenantType
-  status    TenantStatus @default(ACTIVE)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  deletedAt DateTime?
-  users     User[]
-
-  @@index([status])
-  @@map("tenants")
-}
-
-/////////////////////////////////////////////////////
-// USER
-/////////////////////////////////////////////////////
-
-model User {
-  id          String     @id @default(uuid())
-  tenantId    String
-  tenant      Tenant     @relation(fields: [tenantId], references: [id])
-  firstName   String
-  lastName    String
-  displayName String?
-  email       String
-  phone       String?
-  status      UserStatus @default(INVITED)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  deletedAt   DateTime?
-  identities  Identity[]
-  auditLogs   AuditLog[]
-  sessions    Session[]
-  lastLoginAt   DateTime?
-  @@unique([tenantId, email])
-  @@index([tenantId])
-  @@index([status])
-  @@map("users")
-}
-
-/////////////////////////////////////////////////////
-// Identity
-/////////////////////////////////////////////////////
-
-model Identity {
-  id                  String           @id @default(uuid())
-  userId              String
-  user                User             @relation(fields: [userId], references: [id])
-  provider            IdentityProvider
-  identifier          String
-  verified            Boolean          @default(false)
-  lastAuthenticatedAt DateTime?
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
-  credentials         Credential[]
-
-  @@unique([provider, identifier])
-  @@index([userId])
-  @@map("identities")
-}
-
-/////////////////////////////////////////////////////
-// Credential
-/////////////////////////////////////////////////////
-
-model Credential {
-  id           String         @id @default(uuid())
-  identityId   String
-  identity     Identity       @relation(fields: [identityId], references: [id])
-  type         CredentialType
-  passwordHash String?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-
-  @@index([identityId])
-  @@map("credentials")
-}
-
-/////////////////////////////////////////////////////
-// REFRESH TOKEN
-/////////////////////////////////////////////////////
-
-model RefreshToken {
-  id        String   @id @default(uuid())
-  sessionId String
-  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  tokenHash String
-  revoked   Boolean  @default(false)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  @@index([sessionId])
-  @@map("refresh_tokens")
-}
-
-/////////////////////////////////////////////////////
-// AUDIT LOG
-/////////////////////////////////////////////////////
-
-model AuditLog {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
-  action    String
-  resource  String
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-  @@map("audit_logs")
-}
-
-/////////////////////////////////////////////////////
-// SESSION
-/////////////////////////////////////////////////////
-
-model Session {
-  id String @id @default(uuid())
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  refreshTokens RefreshToken[]
-
-  ipAddress  String?
-  userAgent  String?
-  deviceName String?
-
-  isActive Boolean @default(true)
-
-  lastActivityAt DateTime?
-
-  expiresAt DateTime
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([isActive])
-  @@map("sessions")
 }

@@ -10,6 +10,10 @@ import { LoginDto } from '../dto/login.dto';
 import { AuthRepository } from '../repositories/auth.repository';
 import { PasswordService } from './password.service';
 import { JwtService } from './jwt.service';
+import { ConfigService } from '@nestjs/config';
+import { AUTH_CONSTANTS } from 'src/common/constants/auth.constants';
+import { InvalidCredentialsException } from 'src/common/exceptions/auth/invalid-credentials.exception';
+import { UserInactiveException } from 'src/common/exceptions/auth/user-inactive.exception';
 
 @Injectable()
 export class LoginService {
@@ -17,6 +21,7 @@ export class LoginService {
     private readonly authRepository: AuthRepository,
     private readonly passwordService: PasswordService,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   async execute(
@@ -28,18 +33,18 @@ export class LoginService {
     const identity = await this.authRepository.findIdentityByIdentifier(
       dto.email,
     );
-    console.log(`resultado de la busqueda por identidad ${identity?.id}`);
+    
     if (!identity) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new InvalidCredentialsException();
     }
 
     // Buscar credencial PASSWORD
     const credential = identity.credentials.find(
-      (credential) => credential.type === 'PASSWORD',
+      (credential) => credential.type === AUTH_CONSTANTS.CREDENTIAL_TYPES.PASSWORD,
     );
 
     if (!credential || !credential.passwordHash) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new InvalidCredentialsException();
     }
 
     // Validar contraseña
@@ -49,14 +54,12 @@ export class LoginService {
     );
 
     if (!validPassword) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new InvalidCredentialsException();
     }
 
     // Validar estado del usuario
-    if (identity.user.status !== 'ACTIVE') {
-      throw new ForbiddenException(
-        'User account is not active',
-      );
+    if (identity.user.status !== AUTH_CONSTANTS.USER_STATUS.ACTIVE) {
+      throw new UserInactiveException();
     }
 
     // Crear sesión
@@ -87,9 +90,13 @@ export class LoginService {
     const refreshTokenHash = createHash('sha256')
       .update(refreshToken)
       .digest('hex');
+    
+    const expirationMs = this.configService.get<number>(
+          'auth.jwt.refreshTokenExpirationMs',
+        )!;
 
     const refreshTokenExpiresAt = new Date(
-        Date.now() + 7 * 24 * 60 * 60 * 1000,
+        Date.now() + expirationMs,
     );
     await this.authRepository.saveRefreshToken(
       session.id,

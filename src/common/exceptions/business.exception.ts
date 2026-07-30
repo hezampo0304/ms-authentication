@@ -1,12 +1,21 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { HttpException } from '@nestjs/common';
+import { ResponseCode } from '../response/response-code';
 
 export class BusinessException extends HttpException {
 
   constructor(
-    message: string,
-    status: HttpStatus = HttpStatus.BAD_REQUEST,
+    response: ResponseCode,
   ) {
-    super(message, status);
+
+    super(
+      {
+        success: false,
+        code: response.code,
+        message: response.message,
+      },
+      response.httpStatus,
+    );
+
   }
 
 }

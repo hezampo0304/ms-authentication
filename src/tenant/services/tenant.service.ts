@@ -6,6 +6,7 @@ import {
 import { CreateTenantDto } from '../dto/create-tenant.dto';
 import { TenantEntity } from '../entities/tenant.entity';
 import { TenantRepository } from '../repositories/tenant.repository';
+import { TenantAlreadyExistsException } from 'src/common/exceptions/tenant/tenant-already-exists.exception';
 
 @Injectable()
 export class TenantService {
@@ -21,9 +22,7 @@ export class TenantService {
     const exists = await this.tenantRepository.findBySlug(dto.slug);
 
     if (exists) {
-      throw new ConflictException(
-        'The tenant slug is already registered.',
-      );
+      throw new TenantAlreadyExistsException();
     }
 
     return this.tenantRepository.create(dto);
