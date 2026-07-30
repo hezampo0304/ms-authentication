@@ -26,7 +26,7 @@ export class RefreshTokenService {
     dto: RefreshTokenDto,
   ) {
 
-    // 1. Validar firma del JWT
+    //1. Validar firma del JWT
     let payload: JwtPayload;
 
     try {
