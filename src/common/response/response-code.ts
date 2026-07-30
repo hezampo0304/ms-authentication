@@ -8,4 +8,19 @@ export class ResponseCode {
     public readonly httpStatus: HttpStatus,
   ) {}
 
+  toResponse() {
+    return {
+      code: this.code,
+      message: this.message,
+    };
+  }
+
+  isClientError(): boolean {
+    return this.httpStatus >= 400 && this.httpStatus < 500;
+  }
+
+  isServerError(): boolean {
+    return this.httpStatus >= 500;
+  }
+
 }

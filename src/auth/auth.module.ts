@@ -12,6 +12,8 @@ import { LoginService } from './services/login.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LogoutService } from './services/logout.service';
+import { ProfileService } from './services/profile.service';
+import { RefreshTokenService } from './services/refresh-token.service';
 
 
 @Module({
@@ -35,7 +37,9 @@ import { LogoutService } from './services/logout.service';
     JwtAuthGuard,
     PasswordService,
     AuthRepository,
-    LogoutService
+    LogoutService,
+    RefreshTokenService,
+    ProfileService
   ],
 })
 export class AuthModule {}

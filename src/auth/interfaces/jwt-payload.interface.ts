@@ -5,6 +5,7 @@ export interface JwtPayload {
   email: string;
   provider: string;
   sessionId: string;
+  jti: string;
   iat: number;
   exp: number;
 }

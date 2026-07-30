@@ -4,7 +4,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 
 import { LoginDto } from '../dto/login.dto';
 import { AuthRepository } from '../repositories/auth.repository';
@@ -77,6 +77,7 @@ export class LoginService {
       email: identity.identifier,
       provider: identity.provider,
       sessionId: session.id,
+      jti: randomUUID(),
     };
 
     // Generar tokens

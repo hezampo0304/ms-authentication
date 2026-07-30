@@ -189,16 +189,18 @@ export class AuthRepository {
     });
   }
 
-  async revokeRefreshToken(id: string): Promise<RefreshToken> {
-    return this.prisma.refreshToken.update({
-      where: {
-        id,
-      },
-      data: {
-        revoked: true,
-      },
-    });
-  }
+  async revokeRefreshToken(
+  id: string,
+) {
+  return this.prisma.refreshToken.update({
+    where: {
+      id,
+    },
+    data: {
+      revoked: true,
+    },
+  });
+}
 
   async revokeRefreshTokensBySessionId(
   sessionId: string,
@@ -213,4 +215,113 @@ export class AuthRepository {
     },
   });
 }
+
+async findUserProfile(userId: string) {
+  return this.prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+    include: {
+      tenant: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+    },
+  });
+}
+
+async findRefreshTokenByHash(
+  tokenHash: string,
+) {
+  return this.prisma.refreshToken.findFirst({
+    where: {
+      tokenHash,
+    },
+    include: {
+      session: true,
+    },
+  });
+}
+
+async findUserById(
+  userId: string,
+) {
+  return this.prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+  });
+}
+
+async createRefreshToken(
+  sessionId: string,
+  tokenHash: string,
+  expiresAt: Date,
+) {
+  return this.prisma.refreshToken.create({
+    data: {
+      sessionId,
+      tokenHash,
+      expiresAt,
+    },
+  });
+}
+
+async updateSessionLastActivity(
+  sessionId: string,
+) {
+  return this.prisma.session.update({
+    where: {
+      id: sessionId,
+    },
+    data: {
+      lastActivityAt: new Date(),
+    },
+  });
+}
+
+async rotateRefreshToken(
+  refreshTokenId: string,
+  sessionId: string,
+  tokenHash: string,
+  expiresAt: Date,
+) {
+  return this.prisma.$transaction(async (tx) => {
+
+    // Revocar el refresh token anterior
+    await tx.refreshToken.update({
+      where: {
+        id: refreshTokenId,
+      },
+      data: {
+        revoked: true,
+      },
+    });
+
+    // Crear el nuevo refresh token
+    const refreshToken = await tx.refreshToken.create({
+      data: {
+        sessionId,
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    // Actualizar la última actividad de la sesión
+    await tx.session.update({
+      where: {
+        id: sessionId,
+      },
+      data: {
+        lastActivityAt: new Date(),
+      },
+    });
+
+    return refreshToken;
+  });
+}
+
 }
