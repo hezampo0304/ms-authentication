@@ -19,13 +19,18 @@ import { LoginService } from '../services/login.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
 import { LogoutService } from '../services/logout.service';
+import { ProfileService } from '../services/profile.service';
+import { RefreshTokenService } from '../services/refresh-token.service';
+import { RefreshTokenDto } from '../dto/refresh-token.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly registerTenantService: RegisterTenantService,
     private readonly loginService: LoginService,
-    private readonly logoutService: LogoutService
+    private readonly logoutService: LogoutService,
+    private readonly profileService: ProfileService,
+    private readonly refreshTokenService: RefreshTokenService,
   ) {}
 
   @Post('register')
@@ -51,7 +56,10 @@ export class AuthController {
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   profile(@Req() request: Request) {
-    return request['user'];
+    const user = request['user'] as JwtPayload;
+    return this.profileService.execute(
+    user.sub,
+  );
   }
 
   @Post('logout')
@@ -65,4 +73,12 @@ export class AuthController {
       user.sessionId,
     );
   }
+
+  @Post('refresh')
+@HttpCode(HttpStatus.OK)
+refresh(
+  @Body() dto: RefreshTokenDto,
+) {
+  return this.refreshTokenService.execute(dto);
+}
 }

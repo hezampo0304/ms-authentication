@@ -34,6 +34,14 @@ export const AuthResponses = {
       'Session not found',
       HttpStatus.NOT_FOUND,
     ),
+
+  USER_NOT_FOUND:
+
+    new ResponseCode(
+      'AUTH_005',
+      'User not found',
+      HttpStatus.NOT_FOUND,
+    ),
     
 
 };
