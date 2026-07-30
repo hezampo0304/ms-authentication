@@ -61,4 +61,102 @@ export class AuthRepository {
       };
     });
   }
+async createSession(
+  userId: string,
+  ipAddress?: string,
+  userAgent?: string,
+) {
+  return this.prisma.session.create({
+    data: {
+      userId,
+      ipAddress,
+      userAgent,
+      isActive: true,
+      expiresAt: new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000,
+      ),
+    },
+  });
+}
+async saveRefreshToken(
+  sessionId: string,
+  tokenHash: string,
+  expiresAt: Date,
+) {
+  return this.prisma.refreshToken.create({
+    data: {
+      sessionId,
+      tokenHash,
+      expiresAt,
+    },
+  });
+}
+async updateLogin(
+  identityId: string,
+  userId: string,
+) {
+  return this.prisma.$transaction([
+    this.prisma.identity.update({
+      where: {
+        id: identityId,
+      },
+      data: {
+        lastAuthenticatedAt: new Date(),
+      },
+    }),
+
+    this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        lastLoginAt: new Date(),
+      },
+    }),
+  ]);
+}
+
+async findIdentityByIdentifier(identifier: string) {
+  return this.prisma.identity.findFirst({
+    where: {
+      identifier,
+      provider: 'LOCAL',
+    },
+    include: {
+      user: {
+        include: {
+          tenant: true,
+        },
+      },
+      credentials: true,
+    },
+  });
+}
+async findSessionById(id: string) {
+  return this.prisma.session.findUnique({
+    where: {
+      id,
+    },
+  });
+}
+async revokeSession(sessionId: string) {
+  return this.prisma.session.update({
+    where: {
+      id: sessionId,
+    },
+    data: {
+      isActive: false,
+    },
+  });
+}
+async revokeRefreshToken(id: string) {
+  return this.prisma.refreshToken.update({
+    where: {
+      id,
+    },
+    data: {
+      revoked: true,
+    },
+  });
+}
 }

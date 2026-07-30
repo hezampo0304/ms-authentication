@@ -96,7 +96,7 @@ model User {
   identities  Identity[]
   auditLogs   AuditLog[]
   sessions    Session[]
-
+  lastLoginAt   DateTime?
   @@unique([tenantId, email])
   @@index([tenantId])
   @@index([status])
