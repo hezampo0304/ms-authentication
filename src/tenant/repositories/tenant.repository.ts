@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateTenantDto } from '../dto/create-tenant.dto';
 import { TenantEntity } from '../entities/tenant.entity';
 import { TenantMapper } from '../mappers/tenant.mapper';
+import { EmailAlreadyExistsException } from 'src/common/exceptions/user/email-already-exists.exception';
 
 @Injectable()
 export class TenantRepository {

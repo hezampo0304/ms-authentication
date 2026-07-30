@@ -6,6 +6,7 @@ import compression from 'compression';
 
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/exceptions/global-exception.filter';
+import { ResponseInterceptor } from './common/interceptors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -21,12 +22,20 @@ async function bootstrap() {
   app.setGlobalPrefix(configService.get<string>('API_PREFIX')!);
 
   app.useGlobalPipes(
-  new ValidationPipe({
-    whitelist: true,
-    transform: true,
-    forbidNonWhitelisted: true,
-  }),
-);
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
+
+  app.useGlobalFilters(
+    new GlobalExceptionFilter(),
+  );
+
+  app.useGlobalInterceptors(
+    new ResponseInterceptor(),
+  );
 
   const port = configService.get<number>('PORT') ?? 3000;
 

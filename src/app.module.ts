@@ -4,17 +4,22 @@ import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { TenantModule } from './tenant/tenant.module';
 import { AuthModule } from './auth/auth.module';
+import { validationSchema } from './config/validation';
+import configuration from './config/configuration';
+
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      validationSchema,
+      load: configuration,
     }),
     PrismaModule,
     TenantModule,
     AuthModule,
-    HealthModule
+    HealthModule,
   ]
 })
 export class AppModule {}

@@ -9,12 +9,9 @@ import {
 
 import { Request, Response } from 'express';
 
-import { ApiErrorResponse } from '../response/api-error.response';
-
 @Catch()
-export class GlobalExceptionFilter
-  implements ExceptionFilter
-{
+export class GlobalExceptionFilter implements ExceptionFilter {
+
   private readonly logger =
     new Logger(GlobalExceptionFilter.name);
 
@@ -31,10 +28,11 @@ export class GlobalExceptionFilter
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
 
-    let code = 'SYSTEM_001';
-
-    let message: string | string[] =
-      'Internal server error';
+    let body = {
+      success: false,
+      code: 'SYSTEM_001',
+      message: 'Internal server error',
+    };
 
     if (exception instanceof HttpException) {
 
@@ -48,34 +46,32 @@ export class GlobalExceptionFilter
         exceptionResponse !== null
       ) {
 
-        const body = exceptionResponse as Record<string, any>;
-
-        code = body.code ?? code;
-        message = body.message ?? message;
+        body = {
+          ...body,
+          ...(exceptionResponse as object),
+        };
 
       } else {
 
-        message = String(exceptionResponse);
+        body.message = String(exceptionResponse);
 
       }
 
-    } else {
-      // Solo los errores inesperados se registran
-      this.logger.error(
-        exception instanceof Error
-          ? exception.stack
-          : exception,
-      );
     }
 
-    response
-      .status(status)
-      .json(
-        new ApiErrorResponse(
-          code,
-          message,
-          request.originalUrl,
-        ),
-      );
+    this.logger.error({
+      method: request.method,
+      path: request.url,
+      status,
+      exception,
+    });
+
+    response.status(status).json({
+      ...body,
+      path: request.originalUrl,
+      timestamp: new Date().toISOString(),
+    });
+
   }
+
 }
