@@ -22,6 +22,8 @@ import { LogoutService } from '../services/logout.service';
 import { ProfileService } from '../services/profile.service';
 import { RefreshTokenService } from '../services/refresh-token.service';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
+import { RequirePermission } from '../decorators/require-permission.decorator';
+import { PermissionGuard } from '../guards/permission.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -68,7 +70,7 @@ export class AuthController {
     @Req() request: Request,
   ) {
     const user = request['user'] as JwtPayload;
-
+    console.log('User from request:', user);
     return this.logoutService.execute(
       user.sessionId,
     );
@@ -81,4 +83,20 @@ refresh(
 ) {
   return this.refreshTokenService.execute(dto);
 }
+
+
+@Get('test/users')
+@UseGuards(
+  JwtAuthGuard,
+  PermissionGuard,
+)
+@RequirePermission('reports.read')
+testUsersPermission() {
+  return {
+    success: true,
+    message: 'You have users.read permission.',
+  };
+}
+
+
 }

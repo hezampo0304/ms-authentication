@@ -20,6 +20,7 @@ import { RefreshTokenService } from './services/refresh-token.service';
 
 import { join } from 'path';
 import { readFileSync } from 'fs';
+import { PermissionGuard } from './guards/permission.guard';
 
 @Module({
   imports: [
@@ -28,15 +29,20 @@ import { readFileSync } from 'fs';
     PrismaModule,
 
     JwtModule.register({
-      privateKey: readFileSync(
-        join(process.cwd(), 'jwt-private.pem'),
-        'utf8'
-      ),
+  privateKey: readFileSync(
+    join(process.cwd(), 'jwt-private.pem'),
+    'utf8',
+  ),
 
-      signOptions: {
-        algorithm: 'RS256',
-      },
-    }),
+  publicKey: readFileSync(
+    join(process.cwd(), 'jwt-public.pem'),
+    'utf8',
+  ),
+
+  signOptions: {
+    algorithm: 'RS256',
+  },
+}),
   ],
 
   controllers: [
@@ -44,16 +50,17 @@ import { readFileSync } from 'fs';
   ],
 
   providers: [
-    RegisterTenantService,
-    LoginService,
-    JwtService,
-    JwtAuthGuard,
-    PasswordService,
-    AuthRepository,
-    LogoutService,
-    RefreshTokenService,
-    ProfileService,
-  ],
+  RegisterTenantService,
+  LoginService,
+  JwtService,
+  JwtAuthGuard,
+  PermissionGuard,
+  PasswordService,
+  AuthRepository,
+  LogoutService,
+  RefreshTokenService,
+  ProfileService,
+],
 
   exports: [
     JwtService,

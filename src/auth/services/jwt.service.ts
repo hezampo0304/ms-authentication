@@ -8,7 +8,6 @@ import type { StringValue } from 'ms';
 
 @Injectable()
 export class JwtService {
-
   constructor(
     private readonly jwt: NestJwtService,
     private readonly configService: ConfigService,

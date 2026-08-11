@@ -6,6 +6,10 @@ export interface JwtPayload {
   provider: string;
   sessionId: string;
   jti: string;
-  iat: number;
-  exp: number;
+
+  roles: string[];
+  permissions: string[];
+
+  iat?: number;
+  exp?: number;
 }

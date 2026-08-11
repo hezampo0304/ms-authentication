@@ -21,6 +21,8 @@ export class LogoutService {
         sessionId,
       );
 
+      console.log('Session found:', session);
+
     if (!session) {
       throw new NotFoundException({
         code: AuthResponses.SESSION_NOT_FOUND.code,
