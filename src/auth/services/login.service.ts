@@ -1,7 +1,5 @@
 import {
-  Injectable,
-  UnauthorizedException,
-  ForbiddenException,
+  Injectable
 } from '@nestjs/common';
 
 import { createHash, randomUUID } from 'crypto';
@@ -30,17 +28,20 @@ export class LoginService {
     userAgent?: string,
   ) {
     // Buscar identidad
-    const identity = await this.authRepository.findIdentityByIdentifier(
-      dto.email,
-    );
-    
+    const identity =
+      await this.authRepository.findIdentityByIdentifier(
+        dto.email,
+      );
+
     if (!identity) {
       throw new InvalidCredentialsException();
     }
 
     // Buscar credencial PASSWORD
     const credential = identity.credentials.find(
-      (credential) => credential.type === AUTH_CONSTANTS.CREDENTIAL_TYPES.PASSWORD,
+      (credential) =>
+        credential.type ===
+        AUTH_CONSTANTS.CREDENTIAL_TYPES.PASSWORD,
     );
 
     if (!credential || !credential.passwordHash) {
@@ -48,26 +49,49 @@ export class LoginService {
     }
 
     // Validar contraseña
-    const validPassword = await this.passwordService.compare(
-      dto.password,
-      credential.passwordHash,
-    );
+    const validPassword =
+      await this.passwordService.compare(
+        dto.password,
+        credential.passwordHash,
+      );
 
     if (!validPassword) {
       throw new InvalidCredentialsException();
     }
 
     // Validar estado del usuario
-    if (identity.user.status !== AUTH_CONSTANTS.USER_STATUS.ACTIVE) {
+    if (
+      identity.user.status !==
+      AUTH_CONSTANTS.USER_STATUS.ACTIVE
+    ) {
       throw new UserInactiveException();
     }
 
-    // Crear sesión
-    const session = await this.authRepository.createSession(
-      identity.user.id,
-      ipAddress,
-      userAgent,
+    // Obtener roles del usuario
+    const roles = identity.user.roles.map(
+      (userRole) => userRole.role.name,
     );
+
+    // Obtener permisos únicos de todos los roles
+    const permissions = [
+      ...new Set(
+        identity.user.roles.flatMap(
+          (userRole) =>
+            userRole.role.permissions.map(
+              (rolePermission) =>
+                rolePermission.permission.name,
+            ),
+        ),
+      ),
+    ];
+
+    // Crear sesión
+    const session =
+      await this.authRepository.createSession(
+        identity.user.id,
+        ipAddress,
+        userAgent,
+      );
 
     // Payload JWT
     const payload = {
@@ -78,31 +102,40 @@ export class LoginService {
       provider: identity.provider,
       sessionId: session.id,
       jti: randomUUID(),
+      roles,
+      permissions,
     };
 
-    // Generar tokens
+    // Generar Access Token
     const accessToken =
-      await this.jwtService.generateAccessToken(payload);
+      await this.jwtService.generateAccessToken(
+        payload,
+      );
 
+    // Generar Refresh Token
     const refreshToken =
-      await this.jwtService.generateRefreshToken(payload);
+      await this.jwtService.generateRefreshToken(
+        payload,
+      );
 
     // Guardar hash del Refresh Token
     const refreshTokenHash = createHash('sha256')
       .update(refreshToken)
       .digest('hex');
-    
-    const expirationMs = this.configService.get<number>(
-          'auth.jwt.refreshTokenExpirationMs',
-        )!;
+
+    const expirationMs =
+      this.configService.get<number>(
+        'auth.jwt.refreshTokenExpirationMs',
+      )!;
 
     const refreshTokenExpiresAt = new Date(
-        Date.now() + expirationMs,
+      Date.now() + expirationMs,
     );
+
     await this.authRepository.saveRefreshToken(
       session.id,
       refreshTokenHash,
-      refreshTokenExpiresAt
+      refreshTokenExpiresAt,
     );
 
     // Actualizar fechas de login

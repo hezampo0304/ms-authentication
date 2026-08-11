@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { validationSchema } from './config/validation';
 import configuration from './config/configuration';
 import { KafkaModule } from './infraestructure/kafka/kafka.module';
+import { RbacModule } from './modules/rbac/rbac.module';
 
 
 @Module({
@@ -21,7 +22,8 @@ import { KafkaModule } from './infraestructure/kafka/kafka.module';
     TenantModule,
     AuthModule,
     HealthModule,
-    KafkaModule
+    KafkaModule,
+    RbacModule
   ]
 })
 export class AppModule {}

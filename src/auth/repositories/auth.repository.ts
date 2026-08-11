@@ -96,22 +96,35 @@ export class AuthRepository {
     }
   }
 
-  async findIdentityByIdentifier(identifier: string) {
-    return this.prisma.identity.findFirst({
-      where: {
-        identifier,
-        provider: AUTH_CONSTANTS.PROVIDERS.LOCAL,
-      },
-      include: {
-        user: {
-          include: {
-            tenant: true,
+ async findIdentityByIdentifier(identifier: string) {
+  return this.prisma.identity.findFirst({
+    where: {
+      identifier,
+      provider: AUTH_CONSTANTS.PROVIDERS.LOCAL,
+    },
+    include: {
+      user: {
+        include: {
+          tenant: true,
+          roles: {
+            include: {
+              role: {
+                include: {
+                  permissions: {
+                    include: {
+                      permission: true,
+                    },
+                  },
+                },
+              },
+            },
           },
         },
-        credentials: true,
       },
-    });
-  }
+      credentials: true,
+    },
+  });
+}
 
   async createSession(
     userId: string,
