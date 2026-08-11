@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { JwtService as NestJwtService } from '@nestjs/jwt';
+import {
+  JwtService as NestJwtService,
+} from '@nestjs/jwt';
+
 import { ConfigService } from '@nestjs/config';
+import type { StringValue } from 'ms';
 
 @Injectable()
 export class JwtService {
@@ -11,40 +15,36 @@ export class JwtService {
   ) {}
 
   async generateAccessToken(payload: object) {
+    const expiresIn =
+      this.configService.getOrThrow<string>(
+        'JWT_ACCESS_TOKEN_EXPIRES',
+      ) as StringValue;
+
     return this.jwt.signAsync(payload, {
-      secret: this.configService.getOrThrow<string>(
-        'JWT_ACCESS_SECRET',
-      ),
-      expiresIn: this.configService.get('JWT_ACCESS_TOKEN_EXPIRES'),
+      expiresIn,
     });
   }
 
   async generateRefreshToken(payload: object) {
+    const expiresIn =
+      this.configService.getOrThrow<string>(
+        'JWT_REFRESH_TOKEN_EXPIRES',
+      ) as StringValue;
+
     return this.jwt.signAsync(payload, {
-      secret: this.configService.getOrThrow<string>(
-        'JWT_REFRESH_SECRET',
-      ),
-      expiresIn: this.configService.get('JWT_REFRESH_TOKEN_EXPIRES'),
+      expiresIn,
     });
   }
 
   async verifyAccessToken(token: string) {
     return this.jwt.verifyAsync(token, {
-      secret: this.configService.getOrThrow<string>(
-        'JWT_ACCESS_SECRET',
-      )
+      algorithms: ['RS256'],
     });
   }
 
-  async verifyRefreshToken(
-    token: string,
-  ) {
+  async verifyRefreshToken(token: string) {
     return this.jwt.verifyAsync(token, {
-      secret: this.configService.getOrThrow<string>(
-        'JWT_REFRESH_SECRET',
-      )
+      algorithms: ['RS256'],
     });
   }
-
-  
 }

@@ -6,6 +6,7 @@ import { TenantModule } from './tenant/tenant.module';
 import { AuthModule } from './auth/auth.module';
 import { validationSchema } from './config/validation';
 import configuration from './config/configuration';
+import { KafkaModule } from './infraestructure/kafka/kafka.module';
 
 
 @Module({
@@ -20,6 +21,7 @@ import configuration from './config/configuration';
     TenantModule,
     AuthModule,
     HealthModule,
+    KafkaModule
   ]
 })
 export class AppModule {}
