@@ -12,6 +12,8 @@ import { AuthRepository } from '../repositories/auth.repository';
 import { JwtService } from './jwt.service';
 
 import { AUTH_RESPONSE, USER_RESPONSE } from '../../common/constants';
+import { InvalidCredentialsException } from 'src/common/exceptions/auth/invalid-credentials.exception';
+import { SessionClient } from 'src/infraestructure/session/session.client';
 
 
 @Injectable()
@@ -20,6 +22,7 @@ export class RefreshTokenService {
   constructor(
     private readonly authRepository: AuthRepository,
     private readonly jwtService: JwtService,
+    private readonly sessionClient: SessionClient,
   ) {}
 
   async execute(
@@ -81,12 +84,16 @@ export class RefreshTokenService {
 
     // 6. ¿La sesión sigue activa?
     if (!refreshToken.session.isActive) {
+  throw new UnauthorizedException(
+    AUTH_RESPONSE.SESSION_NOT_FOUND.toResponse(),
+  );
+}
 
-      throw new UnauthorizedException(
-        AUTH_RESPONSE.SESSION_NOT_FOUND.toResponse(),
-      );
-
-    }
+await this.sessionClient.validateSession(
+  payload.sub,
+  payload.tenantId,
+  refreshToken.session.id,
+);
 
     // 7. Buscar usuario
     const user =
@@ -102,6 +109,33 @@ export class RefreshTokenService {
 
     }
 
+    const identity =
+          await this.authRepository.findIdentityByIdentifier(
+            user.email,
+          );
+    
+        if (!identity) {
+          throw new InvalidCredentialsException();
+        }
+
+    // Obtener roles del usuario
+    const roles = identity.user.roles.map(
+      (userRole) => userRole.role.name,
+    );
+
+    // Obtener permisos únicos de todos los roles
+    const permissions = [
+      ...new Set(
+        identity.user.roles.flatMap(
+          (userRole) =>
+            userRole.role.permissions.map(
+              (rolePermission) =>
+                rolePermission.permission.name,
+            ),
+        ),
+      ),
+    ];
+
     // 8. Nuevo payload
     const newPayload = {
       sub: user.id,
@@ -111,6 +145,8 @@ export class RefreshTokenService {
       provider: payload.provider,
       sessionId: refreshToken.session.id,
       jti: randomUUID(),
+      roles,
+      permissions,
     };
 
     // 9. Generar nuevos tokens

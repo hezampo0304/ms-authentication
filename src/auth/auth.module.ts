@@ -21,6 +21,7 @@ import { RefreshTokenService } from './services/refresh-token.service';
 import { join } from 'path';
 import { readFileSync } from 'fs';
 import { PermissionGuard } from './guards/permission.guard';
+import { SessionClient } from 'src/infraestructure/session/session.client';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { PermissionGuard } from './guards/permission.guard';
   LogoutService,
   RefreshTokenService,
   ProfileService,
+  SessionClient,
 ],
 
   exports: [
