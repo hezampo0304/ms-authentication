@@ -7,5 +7,16 @@ export interface UserAuthenticatedEvent {
   tenantId: string;
   sessionId: string;
 
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  displayName?: string;
+  phone?: string;
+
+  ipAddress?: string;
+  userAgent?: string;
+
+  expiresAt: string;
+
   provider: string;
 }

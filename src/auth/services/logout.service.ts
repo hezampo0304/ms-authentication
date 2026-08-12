@@ -5,11 +5,15 @@ import {
 
 import { AuthRepository } from '../repositories/auth.repository';
 import { AuthResponses, ResponseCode } from 'src/common/response';
+import { KafkaService } from 'src/infraestructure/kafka/kafka.service';
+import { UserLoggedOutEvent } from 'src/infraestructure/events/user-logged-out.event';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class LogoutService {
   constructor(
     private readonly authRepository: AuthRepository,
+    private readonly kafkaService: KafkaService,
   ) {}
 
   async execute(
@@ -20,6 +24,8 @@ export class LogoutService {
       await this.authRepository.findSessionById(
         sessionId,
       );
+    const tenantId = 
+      await this.authRepository.findUserById(session?.userId ?? '');
 
       console.log('Session found:', session);
 
@@ -46,6 +52,25 @@ export class LogoutService {
     // Desactivar la sesión
     await this.authRepository.revokeSession(
       sessionId,
+    );
+
+    // Publicar evento para ms-session
+    const event: UserLoggedOutEvent = {
+      eventId: randomUUID(),
+      eventType: 'USER_LOGGED_OUT',
+      occurredAt: new Date().toISOString(),
+
+      userId: session.userId,
+      tenantId: tenantId?.tenantId ?? '',
+      sessionId: session.id,
+
+      reason: 'USER_LOGOUT',
+    };
+
+    await this.kafkaService.publish(
+      process.env.KAFKA_AUTH_EVENTS_TOPIC ??
+        'auth.events',
+      event,
     );
 
     return {

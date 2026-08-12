@@ -12,6 +12,8 @@ import { ConfigService } from '@nestjs/config';
 import { AUTH_CONSTANTS } from 'src/common/constants/auth.constants';
 import { InvalidCredentialsException } from 'src/common/exceptions/auth/invalid-credentials.exception';
 import { UserInactiveException } from 'src/common/exceptions/auth/user-inactive.exception';
+import { KafkaService } from 'src/infraestructure/kafka/kafka.service';
+import { UserAuthenticatedEvent } from 'src/infraestructure/events/user-authenticated.event';
 
 @Injectable()
 export class LoginService {
@@ -20,6 +22,7 @@ export class LoginService {
     private readonly passwordService: PasswordService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly kafkaService: KafkaService,
   ) {}
 
   async execute(
@@ -92,6 +95,30 @@ export class LoginService {
         ipAddress,
         userAgent,
       );
+
+    //aqui tengo que crear el evento Kafka para el login exitoso, con la información del usuario y la sesión creada
+    const event: UserAuthenticatedEvent = {
+      eventId: randomUUID(),
+      eventType: 'USER_AUTHENTICATED',
+      occurredAt: new Date().toISOString(),
+      userId: identity.user.id,
+      tenantId: identity.user.tenantId,
+      sessionId: session.id,
+      email: identity.user.email,
+      firstName: identity.user.firstName,
+      lastName: identity.user.lastName,
+      ipAddress,
+      userAgent,
+      expiresAt: session.expiresAt.toISOString(),
+      provider: identity.provider,
+    };
+    
+        await this.kafkaService.publish(
+          process.env.KAFKA_AUTH_EVENTS_TOPIC ??
+            'auth.events',
+          event,
+        );
+
 
     // Payload JWT
     const payload = {

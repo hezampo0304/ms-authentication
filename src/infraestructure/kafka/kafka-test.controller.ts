@@ -32,28 +32,21 @@ export class KafkaTestController {
 
     const event: UserAuthenticatedEvent = {
       eventId: randomUUID(),
-
       eventType: 'USER_AUTHENTICATED',
-
       occurredAt:
         new Date().toISOString(),
-
       userId:
         '00000000-0000-0000-0000-000000000001',
-
       tenantId:
         '00000000-0000-0000-0000-000000000002',
-
       sessionId:
         randomUUID(),
-
       provider: 'LOCAL',
     };
 
     await this.kafkaService.publish(
       process.env.KAFKA_AUTH_EVENTS_TOPIC ??
         'auth.events',
-
       event,
     );
 
