@@ -119,7 +119,6 @@ export class LoginService {
           event,
         );
 
-
     // Payload JWT
     const payload = {
       sub: identity.user.id,
