@@ -23,6 +23,19 @@ export class TenantRepository {
     return tenant ? TenantMapper.toEntity(tenant) : null;
   }
 
+  async findAll(): Promise<TenantEntity[]> {
+
+  const tenants = await this.prisma.tenant.findMany({
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+
+  return tenants.map((tenant) =>
+    TenantMapper.toEntity(tenant),
+  );
+}
+
   async create(dto: CreateTenantDto): Promise<TenantEntity> {
 
     const tenant = await this.prisma.tenant.create({

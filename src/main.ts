@@ -37,6 +37,8 @@ async function bootstrap() {
     new ResponseInterceptor(),
   );
 
+  app.enableCors();
+  
   const port = configService.get<number>('PORT') ?? 3000;
 
   await app.listen(port);
