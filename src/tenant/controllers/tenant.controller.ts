@@ -4,11 +4,13 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Get
 } from '@nestjs/common';
 
 import { CreateTenantDto } from '../dto/create-tenant.dto';
 import { TenantService } from '../services/tenant.service';
 import { ResponseFactory } from 'src/common/response/response.factory';
+import { TenantEntity } from '../entities/tenant.entity';
 
 @Controller('/tenants')
 export class TenantController {
@@ -31,4 +33,9 @@ export class TenantController {
       'Tenant registered successfully.',
     );
   }
+
+  @Get('getAllTenants')
+async getTenants(): Promise<TenantEntity[]> {
+  return this.tenantService.getTenants();
+}
 }

@@ -28,4 +28,8 @@ export class TenantService {
     return this.tenantRepository.create(dto);
   }
 
+  async getTenants(): Promise<TenantEntity[]> {
+  return this.tenantRepository.findAll();
+}
+
 }
